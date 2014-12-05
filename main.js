@@ -66,26 +66,33 @@ define(function (require, exports, module) {
 
         var curFile = editor.document.file.fullPath;
         var ext = curFile.split('.').pop();
-        var targetFile = object + ' . ' + ext;
+        var targetFile = object + '.' + ext;
         var root = ProjectManager.getProjectRoot();
-        var items = root.getContents(function(a,items,c,d) {
-            var result = searchDirectory(items, targetFile);
-            console.log(result);
+        
+        searchDirectory(root, targetFile, function(result) {
+            console.log('result', result.fullPath);
         });
-//        console.log(root, items);
-//        var result = searchDirectory(items, targetFile);
-//        console.log(result);
+        
 
     }
     
-    function searchDirectory(directory, targetFile) {
+    function searchDirectory(directory, targetFile, callback) {
         
-        return directory.filter(function(item) {
-            if(typeof item.getContents === 'function') {
-                return searchDirectory(item); 
-            }
-            return FileUtils.compareFilenames(FileUtils.getBaseName(item.fullPath), targetFile);
+        directory.getContents(function(a,items) {
+            
+            items.forEach(function(item) {
+                if(typeof item.getContents === 'function') {
+                    searchDirectory(item, targetFile, callback); 
+                }
+                if(FileUtils.compareFilenames(FileUtils.getBaseName(item.fullPath), targetFile) === 0) {
+                    console.log('files', FileUtils.compareFilenames(FileUtils.getBaseName(item.fullPath), targetFile), FileUtils.getBaseName(item.fullPath), targetFile);
+                    callback(item);
+                }
+            });
+            
         });
+
+        
     }
 
 
