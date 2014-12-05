@@ -30,11 +30,13 @@ define(function (require, exports, module) {
     // Brackets modules
     var CommandManager      = brackets.getModule("command/CommandManager"),
         EditorManager       = brackets.getModule("editor/EditorManager"),
+        DocumentManager     = brackets.getModule("document/DocumentManager"),
         KeyBindingManager   = brackets.getModule("command/KeyBindingManager"),
         Menus               = brackets.getModule("command/Menus"),
         NativeApp           = brackets.getModule("utils/NativeApp"),
         ProjectManager      = brackets.getModule("project/ProjectManager"),
-        FileUtils           = brackets.getModule("file/FileUtils");
+        FileUtils           = brackets.getModule("file/FileUtils"),
+        Pane                = brackets.getModule("view/Pane");
 
 
     // Constants
@@ -70,7 +72,14 @@ define(function (require, exports, module) {
         var root = ProjectManager.getProjectRoot();
         
         searchDirectory(root, targetFile, function(result) {
-            console.log('result', result.fullPath);
+            
+            DocumentManager.getDocumentForPath(result.fullPath)
+            .then(function(document) {
+                console.log('document', document);
+                var res = EditorManager.openDocument(document);
+                
+                console.log('opened', res);
+            });
         });
         
 
@@ -85,7 +94,6 @@ define(function (require, exports, module) {
                     searchDirectory(item, targetFile, callback); 
                 }
                 if(FileUtils.compareFilenames(FileUtils.getBaseName(item.fullPath), targetFile) === 0) {
-                    console.log('files', FileUtils.compareFilenames(FileUtils.getBaseName(item.fullPath), targetFile), FileUtils.getBaseName(item.fullPath), targetFile);
                     callback(item);
                 }
             });
