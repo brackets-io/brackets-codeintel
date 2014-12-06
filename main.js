@@ -29,6 +29,7 @@ define(function (require, exports, module) {
 
     // Brackets modules
     var CommandManager      = brackets.getModule("command/CommandManager"),
+        Commands      = brackets.getModule("command/Commands"),
         EditorManager       = brackets.getModule("editor/EditorManager"),
         DocumentManager     = brackets.getModule("document/DocumentManager"),
         KeyBindingManager   = brackets.getModule("command/KeyBindingManager"),
@@ -72,14 +73,19 @@ define(function (require, exports, module) {
         var root = ProjectManager.getProjectRoot();
         
         searchDirectory(root, targetFile, function(result) {
-            
-            DocumentManager.getDocumentForPath(result.fullPath)
-            .then(function(document) {
-                console.log('document', document);
-                var res = EditorManager.openDocument(document);
-                
-                console.log('opened', res);
-            });
+//            var doc = DocumentManager.createUntitledDocument(1, ".html");
+//            doc.setText("test");  
+//            CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: result.fullPath, paneId: "last-pane", options: {noPaneActivate: false}});
+            CommandManager.execute(Commands.CMD_OPEN, {fullPath: result.fullPath});
+
+//            DocumentManager.getDocumentForPath(result.fullPath)
+//            .then(function(document) {
+//                console.log('document', document);
+//                var res = EditorManager.openDocument(document);
+//                DocumentManager.setCurrentDocument(document);
+//                
+//                console.log('opened', res);
+//            });
         });
         
 
