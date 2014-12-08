@@ -29,7 +29,7 @@ define(function (require, exports, module) {
 
     // Brackets modules
     var CommandManager      = brackets.getModule("command/CommandManager"),
-        Commands      = brackets.getModule("command/Commands"),
+        Commands            = brackets.getModule("command/Commands"),
         EditorManager       = brackets.getModule("editor/EditorManager"),
         DocumentManager     = brackets.getModule("document/DocumentManager"),
         KeyBindingManager   = brackets.getModule("command/KeyBindingManager"),
@@ -37,7 +37,7 @@ define(function (require, exports, module) {
         NativeApp           = brackets.getModule("utils/NativeApp"),
         ProjectManager      = brackets.getModule("project/ProjectManager"),
         FileUtils           = brackets.getModule("file/FileUtils"),
-        Pane                = brackets.getModule("view/Pane");
+        MainViewManager     = brackets.getModule("view/MainViewManager");
 
 
     // Constants
@@ -75,8 +75,9 @@ define(function (require, exports, module) {
         searchDirectory(root, targetFile, function(result) {
 //            var doc = DocumentManager.createUntitledDocument(1, ".html");
 //            doc.setText("test");  
-//            CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: result.fullPath, paneId: "last-pane", options: {noPaneActivate: false}});
-            CommandManager.execute(Commands.CMD_OPEN, {fullPath: result.fullPath});
+            CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: result.fullPath});
+            console.log(MainViewManager.getAllOpenFiles());
+//            CommandManager.execute(Commands.CMD_OPEN, {fullPath: result.fullPath});
 
 //            DocumentManager.getDocumentForPath(result.fullPath)
 //            .then(function(document) {
