@@ -31,25 +31,23 @@ define(function (require, exports, module) {
     var CommandManager      = brackets.getModule("command/CommandManager"),
         Commands            = brackets.getModule("command/Commands"),
         EditorManager       = brackets.getModule("editor/EditorManager"),
-        DocumentManager     = brackets.getModule("document/DocumentManager"),
         KeyBindingManager   = brackets.getModule("command/KeyBindingManager"),
         Menus               = brackets.getModule("command/Menus"),
         NativeApp           = brackets.getModule("utils/NativeApp"),
         ProjectManager      = brackets.getModule("project/ProjectManager"),
         FileUtils           = brackets.getModule("file/FileUtils"),
-        MainViewManager     = brackets.getModule("view/MainViewManager");
+        StringUtils         = brackets.getModule("utils/StringUtils"),
+        Async               = brackets.getModule("utils/Async");
 
 
     // Constants
     var NAVIGATE_CODEINTEL  = "Codeintel",
         CMD_CODEINTEL    = "dannymoerkerke.codeIntel";
-
-    // build query and navigate to documentation
-    function findFile() {
-
+    
+    function getSelection() {
         var editor = EditorManager.getActiveEditor(),
             sel,
-            object;
+            selection;
 
         if (!editor) {
             return null;
@@ -60,36 +58,56 @@ define(function (require, exports, module) {
             return null;
         }
 
-        object = editor.getSelectedText();
+        selection = editor.getSelectedText();
 
-        if (!object) {
+        if (!selection) {
             editor.selectWordAt(sel.start);
-            object = editor.getSelectedText();
+            selection = editor.getSelectedText();
         }
-
-        var curFile = editor.document.file.fullPath;
-        var ext = curFile.split('.').pop();
-        var targetFile = object + '.' + ext;
-        var root = ProjectManager.getProjectRoot();
+        var prefix = editor.document.getRange({line: sel.start.line, ch: sel.start.ch-1}, {line: sel.start.line, ch: sel.start.ch});
+        return {text: selection, prefix: prefix};
+    }
+    
+    // build query and navigate to documentation
+    function findMethod(name) {
         
-        searchDirectory(root, targetFile, function(result) {
-//            var doc = DocumentManager.createUntitledDocument(1, ".html");
-//            doc.setText("test");  
-            CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: result.fullPath});
-            console.log(MainViewManager.getAllOpenFiles());
-//            CommandManager.execute(Commands.CMD_OPEN, {fullPath: result.fullPath});
-
-//            DocumentManager.getDocumentForPath(result.fullPath)
-//            .then(function(document) {
-//                console.log('document', document);
-//                var res = EditorManager.openDocument(document);
-//                DocumentManager.setCurrentDocument(document);
-//                
-//                console.log('opened', res);
-//            });
+        var editor = EditorManager.getActiveEditor();
+        var curDoc = editor.document;
+        var curFile = curDoc.file;
+        
+        var lines = StringUtils.getLines(curDoc.getText());
+        var matchedLine;
+        
+        lines.map(function(line, index) {
+           if(line.match('function ' + name)) {
+               matchedLine = index;
+           } 
         });
         
+        if(matchedLine) {
+            var sel = editor.getSelection();
+            editor.setCursorPos(matchedLine);
+        }
+        else {
 
+            var ext = curFile.fullPath.split('.').pop();
+            var targetFile = name + '.' + ext;
+            var root = ProjectManager.getProjectRoot();
+
+            searchDirectory(root, targetFile, function(file) {
+                CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: file.fullPath})
+                .done(function(file) {
+                    console.log(file);
+                })
+                .fail(function(e) {
+                    console.error(e);
+                })
+                .always(function() {
+                    console.log('always', arguments);
+                });
+            });
+        }
+        
     }
     
     function searchDirectory(directory, targetFile, callback) {
@@ -101,6 +119,7 @@ define(function (require, exports, module) {
                     searchDirectory(item, targetFile, callback); 
                 }
                 if(FileUtils.compareFilenames(FileUtils.getBaseName(item.fullPath), targetFile) === 0) {
+                    
                     callback(item);
                 }
             });
@@ -113,7 +132,11 @@ define(function (require, exports, module) {
 
    // Add command
     function handleCodeIntel() {
-        findFile();
+        var sel = getSelection();
+        
+        if(sel.prefix === '.' || sel.prefix === '>') {
+            findMethod(sel);
+        }
     }
 
 
@@ -123,7 +146,8 @@ define(function (require, exports, module) {
         CMD_CODEINTEL,
         handleCodeIntel
     );
-    KeyBindingManager.addBinding(CMD_CODEINTEL, "Ctrl-Alt-Space");
+    KeyBindingManager.addBinding(CMD_CODEINTEL, "Ctrl-Alt-Space", "linux");
+    KeyBindingManager.addBinding(CMD_CODEINTEL, "Cmd-Shift-Space", "mac");
 
     // Create a menu item bound to the command
     var menu = Menus.getMenu(Menus.AppMenuBar.NAVIGATE_MENU);
