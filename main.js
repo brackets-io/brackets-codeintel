@@ -85,7 +85,6 @@ define(function (require, exports, module) {
         });
         
         if(matchedLine) {
-            var sel = editor.getSelection();
             editor.setCursorPos(matchedLine);
         }
         else {
@@ -110,17 +109,47 @@ define(function (require, exports, module) {
         
     }
     
-    function searchDirectory(directory, targetFile, callback) {
+    function findFile(name) {
+        
+        var deferred = new $.Deferred()
+        
+        var editor = EditorManager.getActiveEditor();
+        var curDoc = editor.document;
+        var curFile = curDoc.file;
+        
+        var ext = curFile.fullPath.split('.').pop();
+        var targetFile = name + '.' + ext;
+        var root = ProjectManager.getProjectRoot();
+        searchDirectory(root, targetFile, deferred);
+        
+//        searchDirectory(root, targetFile, function(file) {
+//            
+//            CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: file.fullPath})
+//            .done(function(file) {
+//                console.log(file);
+//            })
+//            .fail(function(e) {
+//                console.error(e);
+//            })
+//            .always(function() {
+//                console.log('always', arguments);
+//            });
+//        });
+        
+        return deferred.promise();
+    }
+    
+    function searchDirectory(directory, targetFile, deferred) {
         
         directory.getContents(function(a,items) {
             
             items.forEach(function(item) {
                 if(typeof item.getContents === 'function') {
-                    searchDirectory(item, targetFile, callback); 
+                    searchDirectory(item, targetFile, deferred); 
                 }
                 if(FileUtils.compareFilenames(FileUtils.getBaseName(item.fullPath), targetFile) === 0) {
                     
-                    callback(item);
+                    deferred.resolve(item);
                 }
             });
             
