@@ -22,7 +22,7 @@
 
 
 /*jslint vars: true, plusplus: true, devel: true, nomen: true,  regexp: true, indent: 4, maxerr: 50 */
-/*global define, brackets */
+/*global define, brackets, $ */
 
 define(function (require, exports, module) {
     "use strict";
@@ -31,6 +31,7 @@ define(function (require, exports, module) {
     var CommandManager      = brackets.getModule("command/CommandManager"),
         Commands            = brackets.getModule("command/Commands"),
         EditorManager       = brackets.getModule("editor/EditorManager"),
+        DocumentManager     = brackets.getModule("document/DocumentManager"),
         KeyBindingManager   = brackets.getModule("command/KeyBindingManager"),
         Menus               = brackets.getModule("command/Menus"),
         NativeApp           = brackets.getModule("utils/NativeApp"),
@@ -44,21 +45,13 @@ define(function (require, exports, module) {
     var NAVIGATE_CODEINTEL  = "Codeintel",
         CMD_CODEINTEL    = "dannymoerkerke.codeIntel";
     
-    function getSelection() {
-        var editor = EditorManager.getActiveEditor(),
-            sel,
-            selection;
-
-        if (!editor) {
-            return null;
-        }
-
-        sel = editor.getSelection();
+    function getSelection(editor) {
+        var sel = editor.getSelection();
         if (sel.start.line !== sel.end.line) {
             return null;
         }
 
-        selection = editor.getSelectedText();
+        var selection = editor.getSelectedText();
 
         if (!selection) {
             editor.selectWordAt(sel.start);
@@ -68,14 +61,11 @@ define(function (require, exports, module) {
         return {text: selection, prefix: prefix};
     }
     
-    // build query and navigate to documentation
-    function findMethod(name) {
+    
+    function findMethod(name, doc) {
+        var deferred = new $.Deferred();
         
-        var editor = EditorManager.getActiveEditor();
-        var curDoc = editor.document;
-        var curFile = curDoc.file;
-        
-        var lines = StringUtils.getLines(curDoc.getText());
+        var lines = StringUtils.getLines(doc.getText());
         var matchedLine;
         
         lines.map(function(line, index) {
@@ -83,61 +73,55 @@ define(function (require, exports, module) {
                matchedLine = index;
            } 
         });
-        
+
         if(matchedLine) {
-            editor.setCursorPos(matchedLine);
+            deferred.resolve(matchedLine, doc);
         }
         else {
-
-            var ext = curFile.fullPath.split('.').pop();
-            var targetFile = name + '.' + ext;
-            var root = ProjectManager.getProjectRoot();
-
-            searchDirectory(root, targetFile, function(file) {
-                CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: file.fullPath})
-                .done(function(file) {
-                    console.log(file);
-                })
-                .fail(function(e) {
-                    console.error(e);
-                })
-                .always(function() {
-                    console.log('always', arguments);
-                });
+            getParent(doc)
+            .then(function(parent) {
+                findMethod(name, parent);
             });
         }
         
+        return deferred.promise();
     }
     
-    function findFile(name) {
+    function getParent(doc) {
         
-        var deferred = new $.Deferred()
+        var deferred = new $.Deferred();
+        var lines = StringUtils.getLines(doc.getText());
         
-        var editor = EditorManager.getActiveEditor();
-        var curDoc = editor.document;
-        var curFile = curDoc.file;
+        lines.map(function(line, index) {
+            if(line.match('extends')) {
+                var parentName = line.split('extends').pop().trim();
+                
+                findFile(parentName, doc)
+                .then(function(file) {
+                    DocumentManager.getDocumentForPath(file.fullPath)
+                    .then(function(parentDoc) {
+                       deferred.resolve(parentDoc); 
+                    });
+                });
+            } 
+        });
+        
+        return deferred.promise();
+    }
+    
+    function findFile(name, doc) {
+        var deferred = new $.Deferred();
+        
+        var curFile = doc.file;
         
         var ext = curFile.fullPath.split('.').pop();
         var targetFile = name + '.' + ext;
         var root = ProjectManager.getProjectRoot();
         searchDirectory(root, targetFile, deferred);
         
-//        searchDirectory(root, targetFile, function(file) {
-//            
-//            CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: file.fullPath})
-//            .done(function(file) {
-//                console.log(file);
-//            })
-//            .fail(function(e) {
-//                console.error(e);
-//            })
-//            .always(function() {
-//                console.log('always', arguments);
-//            });
-//        });
-        
         return deferred.promise();
     }
+    
     
     function searchDirectory(directory, targetFile, deferred) {
         
@@ -154,17 +138,51 @@ define(function (require, exports, module) {
             });
             
         });
-
-        
     }
 
-
-   // Add command
+    function openFile(file) {
+        CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: file.fullPath})
+        .done(function(file) {
+            console.log(file);
+        })
+        .fail(function(e) {
+            console.error(e);
+        })
+        .always(function() {
+            console.log('always', arguments);
+        });
+    }
+    
+    function selectLineInDoc(matchedLine, doc) {
+        
+        if(doc !== DocumentManager.getCurrentDocument()) {
+            CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: doc.file.fullPath})
+            .done(function() {
+                var editor = EditorManager.getActiveEditor();
+                editor.setCursorPos(matchedLine);
+            });
+        }
+        else {
+            editor.setCursorPos(matchedLine);
+        }
+    }
+   
     function handleCodeIntel() {
-        var sel = getSelection();
+        
+        var editor = EditorManager.getActiveEditor();
+        var curDoc = editor.document;
+        var sel = getSelection(editor);
         
         if(sel.prefix === '.' || sel.prefix === '>') {
-            findMethod(sel);
+            findMethod(sel.text, curDoc) 
+            .then(selectLineInDoc);
+        }
+        else {
+            findFile(sel.text, curDoc)
+            .then(openFile)
+            .fail(function(e) {
+                console.error(e);
+            });
         }
     }
 
