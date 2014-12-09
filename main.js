@@ -34,7 +34,6 @@ define(function (require, exports, module) {
         DocumentManager     = brackets.getModule("document/DocumentManager"),
         KeyBindingManager   = brackets.getModule("command/KeyBindingManager"),
         Menus               = brackets.getModule("command/Menus"),
-        NativeApp           = brackets.getModule("utils/NativeApp"),
         ProjectManager      = brackets.getModule("project/ProjectManager"),
         FileUtils           = brackets.getModule("file/FileUtils"),
         StringUtils         = brackets.getModule("utils/StringUtils"),
@@ -76,7 +75,15 @@ define(function (require, exports, module) {
         return {text: selection, prefix: prefix};
     }
     
-    
+    /**
+     * Find method definition in current document.
+     * When not found, recursively try to find the method in parent class(es)
+     * 
+     * @param   String name name of method
+     * @param   Document doc  current document being searched
+     * @param   Deffered def  deffered object to be resolved with document in which method definition was found and the line
+     * @returns Deffered 
+     */
     function findMethod(name, doc, def) {
         var deferred = def || new $.Deferred();
         console.log('method', name);
@@ -105,6 +112,12 @@ define(function (require, exports, module) {
         return deferred.promise();
     }
     
+    /**
+     * Gets the parent class of the current document
+     * 
+     * @param   Document doc current document being searched
+     * @returns Deferred
+     */
     function getParent(doc) {
         var docs = DocumentManager.getAllOpenDocuments();
         
@@ -145,6 +158,13 @@ define(function (require, exports, module) {
         return deferred.promise();
     }
     
+    /**
+     * Gets the file with name equal to name parameter and the extension of the file opened in the current document
+     * 
+     * @param   String name filename without extension
+     * @param   Document   doc  current document
+     * @returns Deferred
+     */
     function findFile(name, doc) {
         var deferred = new $.Deferred();
         
@@ -158,7 +178,13 @@ define(function (require, exports, module) {
         return deferred.promise();
     }
     
-    
+    /**
+     * Recursively search directory specified by directory parameter for filename specified by targetFile parameter
+     * 
+     * @param {Directory directory  directory to start from searching
+     * @param String targetFile name of file to search for
+     * @param Deferred deferred   deferred object to resolve with found File object
+     */
     function searchDirectory(directory, targetFile, deferred) {
         
         directory.getContents(function(a,items) {
@@ -175,7 +201,12 @@ define(function (require, exports, module) {
             
         });
     }
-
+    
+    /**
+     * Open file in new tab
+     
+     * @param File file 
+     */
     function openFile(file) {
         CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: file.fullPath})
         .done(function(file) {
@@ -186,6 +217,11 @@ define(function (require, exports, module) {
         });
     }
     
+    /**
+     * Select line in document
+     * @param Number matchedLine 
+     * @param Document   doc         
+     */
     function selectLineInDoc(matchedLine, doc) {
         console.log('match: line', matchedLine, 'in doc', doc.file);
         
@@ -202,7 +238,10 @@ define(function (require, exports, module) {
             setCursor();
         }
     }
-   
+    
+    /**
+     * Start codeintel
+     */
     function handleCodeIntel() {
         
         var editor = EditorManager.getActiveEditor();
