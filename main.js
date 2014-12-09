@@ -39,9 +39,10 @@ define(function (require, exports, module) {
         StringUtils         = brackets.getModule("utils/StringUtils"),
         StringMatch         = brackets.getModule("utils/StringMatch"),
         Async               = brackets.getModule("utils/Async");
-
-    var prefixes = {
-        php: '>',
+    
+    // mapping of extensions to method call operators
+    var operators = {
+        php: '->',
         js: '.'
     };
 
@@ -52,8 +53,8 @@ define(function (require, exports, module) {
     /**
      * Gets selected text in current document.
      * If there is no selection then select the word at the cursor position.
-     * Returns the selected text and the first character preceding this selection to specify if the selection is a method call.
-     * This is the case if the extension of the current file is a key in prefixes and the character matches the value of this key.
+     * Returns the selected text and the operator (if any) preceding this selection to specify if the selection is a method call.
+     * This is the case if the extension of the current file is a key in operators and the character(s) preceding the selection match the value of this key.
      *
      * @param   Editor    editor active editor
      * @returns Object    
@@ -71,8 +72,16 @@ define(function (require, exports, module) {
             selection = editor.getSelectedText();
             sel = editor.getSelection();
         }
-        var prefix = editor.document.getRange({line: sel.start.line, ch: sel.start.ch-1}, {line: sel.start.line, ch: sel.start.ch});
-        return {text: selection, prefix: prefix};
+        var ext = FileUtils.getFileExtension(editor.document.file.fullPath);
+        var op = operators[ext];
+        var operator = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - op.length}, {line: sel.start.line, ch: sel.start.ch});
+        
+        if(operator === op) {
+            var parts = editor.document.getLine(sel.start.line).split(operator);
+            var obj = parts[parts.length - 2].split(' ').pop();
+            return {text: selection, operator: operator, object: obj};
+        }
+        return {text: selection};
     }
     
     /**
@@ -247,14 +256,46 @@ define(function (require, exports, module) {
         var editor = EditorManager.getActiveEditor();
         var curDoc = editor.document;
         var sel = getSelection(editor);
-        var ext = FileUtils. getFileExtension(curDoc.file.fullPath);
+        var ext = FileUtils.getFileExtension(curDoc.file.fullPath);
+        var obj;
         
-        if(sel.prefix === prefixes[ext]) {
-            findMethod(sel.text, curDoc) 
-            .then(selectLineInDoc)
-            .fail(function(e) {
-                console.error(e);
-            });
+        if('operator' in sel && sel.operator === operators[ext]) {
+            console.log('find method', sel.text, 'called on', sel.object);
+            
+            // method called on $this so search in file and inheritance tree
+            if(sel.object === '$this') {
+                findMethod(sel.text, curDoc) 
+                .then(selectLineInDoc)
+                .fail(function(e) {
+                    console.error(e);
+                });
+            }
+            // method called on another object, see if this object is instantiated with "new" in the current file and if so, try to find the file in which this class 
+            // is defined and then the method.
+            // If it is not found, look in the inheritance tree of this class
+            else {
+                var lines = StringUtils.getLines(editor.document.getText());
+                var len = lines.length;
+                for(var i=0;i<len;i++) {
+                    var re = new RegExp("\\"+sel.object+"(\\s)+=(\\s)+new");
+                    if(lines[i].match(re)) {
+                        obj = lines[i].split('new').pop().trim().replace(/[;\(\)]/, '');
+                        break;
+                    }
+                }
+                console.log('object is',sel.object, 'which is a', obj);
+                findFile(obj, curDoc)
+                .then(function(file) {
+                    DocumentManager.getDocumentForPath(file.fullPath)
+                    .then(function(doc) {
+                        findMethod(sel.text, doc) 
+                        .then(selectLineInDoc)
+                        .fail(function(e) {
+                            console.error(e);
+                        }); 
+                    });
+                });
+            }
         }
         else {
             findFile(sel.text, curDoc)
