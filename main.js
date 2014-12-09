@@ -56,15 +56,16 @@ define(function (require, exports, module) {
         if (!selection) {
             editor.selectWordAt(sel.start);
             selection = editor.getSelectedText();
+            sel = editor.getSelection();
         }
         var prefix = editor.document.getRange({line: sel.start.line, ch: sel.start.ch-1}, {line: sel.start.line, ch: sel.start.ch});
         return {text: selection, prefix: prefix};
     }
     
     
-    function findMethod(name, doc) {
-        var deferred = new $.Deferred();
-        
+    function findMethod(name, doc, def) {
+        var deferred = def || new $.Deferred();
+        console.log('method', name);
         var lines = StringUtils.getLines(doc.getText());
         var matchedLine;
         
@@ -75,12 +76,14 @@ define(function (require, exports, module) {
         });
 
         if(matchedLine) {
+            console.log('matchedLine', matchedLine, 'doc', doc);
             deferred.resolve(matchedLine, doc);
         }
         else {
             getParent(doc)
             .then(function(parent) {
-                findMethod(name, parent);
+                console.log('parent', parent);
+                findMethod(name, parent, deferred);
             });
         }
         
@@ -92,7 +95,7 @@ define(function (require, exports, module) {
         var deferred = new $.Deferred();
         var lines = StringUtils.getLines(doc.getText());
         
-        lines.map(function(line, index) {
+        lines.map(function(line) {
             if(line.match('extends')) {
                 var parentName = line.split('extends').pop().trim();
                 
@@ -147,14 +150,11 @@ define(function (require, exports, module) {
         })
         .fail(function(e) {
             console.error(e);
-        })
-        .always(function() {
-            console.log('always', arguments);
         });
     }
     
     function selectLineInDoc(matchedLine, doc) {
-        
+        console.log('match: line', matchedLine, 'in doc', doc.file);
         if(doc !== DocumentManager.getCurrentDocument()) {
             CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: doc.file.fullPath})
             .done(function() {
@@ -163,6 +163,7 @@ define(function (require, exports, module) {
             });
         }
         else {
+            var editor = EditorManager.getActiveEditor();
             editor.setCursorPos(matchedLine);
         }
     }
