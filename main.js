@@ -36,9 +36,7 @@ define(function (require, exports, module) {
         Menus               = brackets.getModule("command/Menus"),
         ProjectManager      = brackets.getModule("project/ProjectManager"),
         FileUtils           = brackets.getModule("file/FileUtils"),
-        StringUtils         = brackets.getModule("utils/StringUtils"),
-        StringMatch         = brackets.getModule("utils/StringMatch"),
-        Async               = brackets.getModule("utils/Async");
+        StringUtils         = brackets.getModule("utils/StringUtils");
     
     // mapping of extensions to method call operators
     var operators = {
