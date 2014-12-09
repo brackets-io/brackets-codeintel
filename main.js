@@ -156,11 +156,11 @@ define(function (require, exports, module) {
             findFile(parentName, doc)
             .then(function(file) {
                 console.log('file found');
-                DocumentManager.getDocumentForPath(file.fullPath)
-                .then(function(parentDoc) {
-                    console.log('resolve doc');
-                    deferred.resolve(parentDoc); 
-                });
+                return DocumentManager.getDocumentForPath(file.fullPath);
+            })
+            .then(function(parentDoc) {
+                console.log('resolve doc');
+                deferred.resolve(parentDoc); 
             });
         }
         
@@ -284,17 +284,18 @@ define(function (require, exports, module) {
                     }
                 }
                 console.log('object is',sel.object, 'which is a', obj);
+                
                 findFile(obj, curDoc)
                 .then(function(file) {
-                    DocumentManager.getDocumentForPath(file.fullPath)
-                    .then(function(doc) {
-                        findMethod(sel.text, doc) 
-                        .then(selectLineInDoc)
-                        .fail(function(e) {
-                            console.error(e);
-                        }); 
-                    });
-                });
+                    return DocumentManager.getDocumentForPath(file.fullPath);
+                })
+                .then(function(doc) {
+                    return findMethod(sel.text, doc);
+                })
+                .then(selectLineInDoc)
+                .fail(function(e) {
+                    console.error(e);
+                }); 
             }
         }
         else {
