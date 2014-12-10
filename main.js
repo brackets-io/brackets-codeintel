@@ -306,11 +306,14 @@ define(function (require, exports, module) {
         var lines = StringUtils.getLines(doc.getText());
         var len = lines.length;
         var obj;
-        // http://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
         for(var i=0;i<len;i++) {
-            var re = new RegExp("\\"+object+"(\\s)+=(\\s)+new");
+            // escape string for regex pattern, see http://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
+            var o = object.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+            var re = new RegExp(o+"(\\s)+=(\\s)+new");
+            console.log(re.source);
             if(lines[i].match(re)) {
                 obj = lines[i].split('new').pop().trim().replace(/[;\(\)]/, '');
+                console.log('MATCH', lines[i], obj);
                 break;
             }
         }
