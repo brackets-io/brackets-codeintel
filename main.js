@@ -78,6 +78,10 @@ define(function (require, exports, module) {
         var operator = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - op.length}, {line: sel.start.line, ch: sel.start.ch});
         
         if(operator === op) {
+            // split line by method so the preceding part contains the object it was called on
+            // strip the operator and then if the result of the method call was assigned to a variable
+            // ($foo = $obj->method()) split that part by '=', get the last item of the result array and trim it
+            // otherwise just trim it
             var parts = editor.document.getLine(sel.start.line).split(selection);
             var o = parts[0].substr(0, parts[0].length - operator.length);
             
@@ -98,7 +102,6 @@ define(function (require, exports, module) {
      */
     function findMethod(name, doc, def) {
         var deferred = def || new $.Deferred();
-        console.log('method', name);
         var lines = StringUtils.getLines(doc.getText());
         var matchedLine;
         
@@ -109,14 +112,11 @@ define(function (require, exports, module) {
         });
 
         if(matchedLine) {
-            console.log('matchedLine', matchedLine, 'doc', doc);
             deferred.resolve(matchedLine, doc);
         }
         else {
-            console.log('getParent');
             getParent(doc)
             .done(function(parent) {
-                console.log('parent', parent);
                 findMethod(name, parent, deferred);
             })
             .fail(handleError);
@@ -134,7 +134,6 @@ define(function (require, exports, module) {
     function getParent(doc) {
         var docs = DocumentManager.getAllOpenDocuments();
         
-        console.log('docs', docs);
         var deferred = new $.Deferred();
         var parentName = getParentName(doc);
         
@@ -142,25 +141,23 @@ define(function (require, exports, module) {
             return deferred.resolve(null);
         }
         
+        // if the document is already open return that
         var result = DocumentManager.getAllOpenDocuments()
         .filter(function(document) {
             return document.file.fullPath.indexOf(parentName) !== -1;
         });
         
         if(result.length) {
-            console.log('parent already open');
             deferred.resolve(result[0]); 
         }
         else {
             findFile(parentName, doc)
             .then(getDocumentForFile)
             .done(function(parentDoc) {
-                console.log('resolve doc');
                 deferred.resolve(parentDoc); 
             })
             .fail(handleError);
         }
-        
         return deferred.promise();
     }
     
@@ -184,7 +181,6 @@ define(function (require, exports, module) {
                 break;
             }
         }
-        
         return parentName;
     }
     
@@ -196,16 +192,16 @@ define(function (require, exports, module) {
      * @returns Promise
      */
     function findFile(name, doc) {
-        var deferred = new $.Deferred();
         found = false;
+        var deferred = new $.Deferred();
         var curFile = doc.file;
         var ext = curFile.fullPath.split('.').pop();
         var targetFile = name + '.' + ext;
         var root = ProjectManager.getProjectRoot();
         
-        console.log('start', found);
         searchDirectory(root, targetFile, deferred);
-        console.log('found', found);
+        
+        // if the file was not found reject the promise so it does not hang forever
         if(!found) {
             deferred.reject('not found');
         }
@@ -256,8 +252,6 @@ define(function (require, exports, module) {
      * @param Document   doc         
      */
     function selectLineInDoc(matchedLine, doc) {
-        console.log('match: line', matchedLine, 'in doc', doc.file);
-        
         var setCursor = function() {
             var editor = EditorManager.getActiveEditor();
             editor.setCursorPos(matchedLine, 0, true);
@@ -310,10 +304,9 @@ define(function (require, exports, module) {
             // escape string for regex pattern, see http://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
             var o = object.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
             var re = new RegExp(o+"(\\s)+=(\\s)+new");
-            console.log(re.source);
+
             if(lines[i].match(re)) {
                 obj = lines[i].split('new').pop().trim().replace(/[;\(\)]/, '');
-                console.log('MATCH', lines[i], obj);
                 break;
             }
         }
@@ -331,7 +324,6 @@ define(function (require, exports, module) {
         var ext = FileUtils.getFileExtension(curDoc.file.fullPath);
         
         if('operator' in sel && sel.operator === operators[ext]) {
-            console.log('find method', sel.text, 'called on', sel.object);
             
             // method called on this-pointer so search in file and inheritance tree
             if(isThisPointer(sel.object)) {
