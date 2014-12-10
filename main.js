@@ -234,7 +234,7 @@ define(function (require, exports, module) {
     
     /**
      * Open file in new tab
-     
+     * 
      * @param File file 
      */
     function openFile(file) {
