@@ -78,8 +78,10 @@ define(function (require, exports, module) {
         var operator = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - op.length}, {line: sel.start.line, ch: sel.start.ch});
         
         if(operator === op) {
-            var parts = editor.document.getLine(sel.start.line).split(operator);
-            var obj = parts[parts.length - 2].split(' ').pop().trim();
+            var parts = editor.document.getLine(sel.start.line).split(selection);
+            var o = parts[0].substr(0, parts[0].length - operator.length);
+            
+            var obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.trim();
             return {text: selection, operator: operator, object: obj};
         }
         return {text: selection};
