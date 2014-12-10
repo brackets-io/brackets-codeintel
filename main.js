@@ -43,6 +43,9 @@ define(function (require, exports, module) {
         php: '->',
         js: '.'
     };
+    
+    // boolean which indicates if file was found, used to reject promise
+    var found;
 
     // Constants
     var NAVIGATE_CODEINTEL  = "Codeintel",
@@ -76,7 +79,7 @@ define(function (require, exports, module) {
         
         if(operator === op) {
             var parts = editor.document.getLine(sel.start.line).split(operator);
-            var obj = parts[parts.length - 2].split(' ').pop();
+            var obj = parts[parts.length - 2].split(' ').pop().trim();
             return {text: selection, operator: operator, object: obj};
         }
         return {text: selection};
@@ -86,10 +89,10 @@ define(function (require, exports, module) {
      * Find method definition in current document.
      * When not found, recursively try to find the method in parent class(es)
      * 
-     * @param   String name name of method
+     * @param   String   name name of method
      * @param   Document doc  current document being searched
-     * @param   Deffered def  deffered object to be resolved with document in which method definition was found and the line
-     * @returns Deffered 
+     * @param   Deferred def  deferred object to be resolved with document in which method definition was found and the line
+     * @returns Promise 
      */
     function findMethod(name, doc, def) {
         var deferred = def || new $.Deferred();
@@ -110,10 +113,11 @@ define(function (require, exports, module) {
         else {
             console.log('getParent');
             getParent(doc)
-            .then(function(parent) {
+            .done(function(parent) {
                 console.log('parent', parent);
                 findMethod(name, parent, deferred);
-            });
+            })
+            .fail(handleError);
         }
         
         return deferred.promise();
@@ -123,22 +127,17 @@ define(function (require, exports, module) {
      * Gets the parent class of the current document
      * 
      * @param   Document doc current document being searched
-     * @returns Deferred
+     * @returns Promise
      */
     function getParent(doc) {
         var docs = DocumentManager.getAllOpenDocuments();
         
         console.log('docs', docs);
         var deferred = new $.Deferred();
-        var lines = StringUtils.getLines(doc.getText());
-        var parentName;
+        var parentName = getParentName(doc);
         
-        var len = lines.length;
-        for(var i=0;i<len;i++) {
-            if(lines[i].match('extends')) {
-                parentName = lines[i].split('extends').pop().trim();
-                break;
-            }
+        if(parentName === null) {
+            return deferred.resolve(null);
         }
         
         var result = DocumentManager.getAllOpenDocuments()
@@ -152,45 +151,71 @@ define(function (require, exports, module) {
         }
         else {
             findFile(parentName, doc)
-            .then(function(file) {
-                console.log('file found');
-                return DocumentManager.getDocumentForPath(file.fullPath);
-            })
-            .then(function(parentDoc) {
+            .then(getDocumentForFile)
+            .done(function(parentDoc) {
                 console.log('resolve doc');
                 deferred.resolve(parentDoc); 
-            });
+            })
+            .fail(handleError);
         }
         
         return deferred.promise();
     }
     
     /**
+     * Tries to find the name of the parent of the class defined in the current document by looking at the text after the word "extends"
+     * e.g "class Bar extends Foo"
+     * In this case the method will return "Foo"
+     * 
+     * @param   Document doc current document holding the class definition
+     * @returns String
+     */
+    function getParentName(doc) {
+        var lines = StringUtils.getLines(doc.getText());
+        var parentName = null;
+        var targetString = 'extends';
+
+        var len = lines.length;
+        for(var i=0;i<len;i++) {
+            if(lines[i].match(targetString)) {
+                parentName = lines[i].split(targetString).pop().trim();
+                break;
+            }
+        }
+        
+        return parentName;
+    }
+    
+    /**
      * Gets the file with name equal to name parameter and the extension of the file opened in the current document
      * 
-     * @param   String name filename without extension
+     * @param   String     name filename without extension
      * @param   Document   doc  current document
-     * @returns Deferred
+     * @returns Promise
      */
     function findFile(name, doc) {
         var deferred = new $.Deferred();
-        
+        found = false;
         var curFile = doc.file;
-        
         var ext = curFile.fullPath.split('.').pop();
         var targetFile = name + '.' + ext;
         var root = ProjectManager.getProjectRoot();
-        searchDirectory(root, targetFile, deferred);
         
+        console.log('start', found);
+        searchDirectory(root, targetFile, deferred);
+        console.log('found', found);
+        if(!found) {
+            deferred.reject('not found');
+        }
         return deferred.promise();
     }
     
     /**
      * Recursively search directory specified by directory parameter for filename specified by targetFile parameter
      * 
-     * @param {Directory directory  directory to start from searching
-     * @param String targetFile name of file to search for
-     * @param Deferred deferred   deferred object to resolve with found File object
+     * @param Directory directory  directory to start from searching
+     * @param String    targetFile name of file to search for
+     * @param Deferred  deferred   deferred object to resolve with found File object
      */
     function searchDirectory(directory, targetFile, deferred) {
         
@@ -201,7 +226,7 @@ define(function (require, exports, module) {
                     searchDirectory(item, targetFile, deferred); 
                 }
                 if(FileUtils.compareFilenames(FileUtils.getBaseName(item.fullPath), targetFile) === 0) {
-                    
+                    found = true;
                     deferred.resolve(item);
                 }
             });
@@ -219,14 +244,13 @@ define(function (require, exports, module) {
         .done(function(file) {
             console.log(file);
         })
-        .fail(function(e) {
-            console.error(e);
-        });
+        .fail(handleError);
     }
     
     /**
      * Select line in document
-     * @param Number matchedLine 
+     * 
+     * @param Number     matchedLine 
      * @param Document   doc         
      */
     function selectLineInDoc(matchedLine, doc) {
@@ -239,11 +263,56 @@ define(function (require, exports, module) {
         
         if(doc !== DocumentManager.getCurrentDocument()) {
             CommandManager.execute(Commands.CMD_ADD_TO_WORKINGSET_AND_OPEN, {fullPath: doc.file.fullPath})
-            .done(setCursor);
+            .done(setCursor)
+            .fail(handleError);
         }
         else {
             setCursor();
         }
+    }
+    
+    /**
+     * Returns a promise which is resolved with the document for the file parameter
+     *
+     * @param   File   file 
+     * @returns Promise
+     */
+    function getDocumentForFile(file) {
+        return DocumentManager.getDocumentForPath(file.fullPath);
+    }
+    
+    /**
+     * Determine if string is a this-pointer
+     
+     * @param   String pointer 
+     * @returns Boolean
+     */
+    function isThisPointer(pointer) {
+        return pointer === '$this';
+    }
+    
+    /**
+     * Takes the object variable the method was called on as a string and tries to determine if it was instantiated with "new"
+     * somewhere in the document. 
+     * If this instantiation is found it returns the name of the class that was instantiated as a string.
+     * 
+     * @param   Document doc      current document to be searched
+     * @param   String   object   the object variable the method was called on
+     * @returns String            name of the instantiated class
+     */
+    function getMethodCallTarget(doc, object) {
+        var lines = StringUtils.getLines(doc.getText());
+        var len = lines.length;
+        var obj;
+        
+        for(var i=0;i<len;i++) {
+            var re = new RegExp("\\"+object+"(\\s)+=(\\s)+new");
+            if(lines[i].match(re)) {
+                obj = lines[i].split('new').pop().trim().replace(/[;\(\)]/, '');
+                break;
+            }
+        }
+        return obj;
     }
     
     /**
@@ -255,54 +324,42 @@ define(function (require, exports, module) {
         var curDoc = editor.document;
         var sel = getSelection(editor);
         var ext = FileUtils.getFileExtension(curDoc.file.fullPath);
-        var obj;
         
         if('operator' in sel && sel.operator === operators[ext]) {
             console.log('find method', sel.text, 'called on', sel.object);
             
-            // method called on $this so search in file and inheritance tree
-            if(sel.object === '$this') {
+            // method called on this-pointer so search in file and inheritance tree
+            if(isThisPointer(sel.object)) {
                 findMethod(sel.text, curDoc) 
-                .then(selectLineInDoc)
-                .fail(function(e) {
-                    console.error(e);
-                });
+                .done(selectLineInDoc)
+                .fail(handleError);
             }
             // method called on another object, see if this object is instantiated with "new" in the current file and if so, try to find the file in which this class 
-            // is defined and then the method.
-            // If it is not found, look in the inheritance tree of this class
             else {
-                var lines = StringUtils.getLines(editor.document.getText());
-                var len = lines.length;
-                for(var i=0;i<len;i++) {
-                    var re = new RegExp("\\"+sel.object+"(\\s)+=(\\s)+new");
-                    if(lines[i].match(re)) {
-                        obj = lines[i].split('new').pop().trim().replace(/[;\(\)]/, '');
-                        break;
-                    }
-                }
-                console.log('object is',sel.object, 'which is a', obj);
+                var obj = getMethodCallTarget(editor.document, sel.object);
                 
                 findFile(obj, curDoc)
-                .then(function(file) {
-                    return DocumentManager.getDocumentForPath(file.fullPath);
-                })
+                .then(getDocumentForFile)
                 .then(function(doc) {
                     return findMethod(sel.text, doc);
                 })
-                .then(selectLineInDoc)
-                .fail(function(e) {
-                    console.error(e);
-                }); 
+                .done(selectLineInDoc)
+                .fail(handleError);
             }
         }
         else {
             findFile(sel.text, curDoc)
-            .then(openFile)
-            .fail(function(e) {
-                console.error(e);
-            });
+            .done(openFile)
+            .fail(handleError);
         }
+    }
+    
+    /**
+     * Handle error, for now just log it to the console
+     * @param Error
+     */
+    function handleError(e) {
+        console.error(e);
     }
 
 
@@ -314,7 +371,8 @@ define(function (require, exports, module) {
     );
     KeyBindingManager.addBinding(CMD_CODEINTEL, "Ctrl-Alt-Space", "linux");
     KeyBindingManager.addBinding(CMD_CODEINTEL, "Cmd-Shift-Space", "mac");
-
+    KeyBindingManager.addBinding(CMD_CODEINTEL, "Ctrl-Alt-Space", "win");
+    
     // Create a menu item bound to the command
     var menu = Menus.getMenu(Menus.AppMenuBar.NAVIGATE_MENU);
     menu.addMenuItem(CMD_CODEINTEL);
