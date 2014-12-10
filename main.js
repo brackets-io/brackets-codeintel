@@ -132,7 +132,6 @@ define(function (require, exports, module) {
      * @returns Promise
      */
     function getParent(doc) {
-        var docs = DocumentManager.getAllOpenDocuments();
         
         var deferred = new $.Deferred();
         var parentName = getParentName(doc);
