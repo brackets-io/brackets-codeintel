@@ -81,11 +81,12 @@ define(function (require, exports, module) {
             // split line by method so the preceding part contains the object it was called on
             // strip the operator and then if the result of the method call was assigned to a variable
             // ($foo = $obj->method()) split that part by '=', get the last item of the result array and trim it
-            // otherwise just trim it
+            // otherwise split by ' ' since any other command or keyword that precedes the object (e.g. return $foo) must be followed by a space 
+            // (an assignment with '=' might not have a space in it e.g. $foo=1 vs $foo = 1)
             var parts = editor.document.getLine(sel.start.line).split(selection);
             var o = parts[0].substr(0, parts[0].length - operator.length);
             
-            var obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.trim();
+            var obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.split(' ').pop().trim();
             return {text: selection, operator: operator, object: obj};
         }
         return {text: selection};
