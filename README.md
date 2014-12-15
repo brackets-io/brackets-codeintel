@@ -1,23 +1,26 @@
-## PHP.net Doc
+## Brackets codeintel
 
-A simple [Brackets](http://brackets.io) extension for searching the [php.net](http://php.net/) documentation modeled after [MDN Search Doc](https://github.com/nucliweb/Brackets.mdn-search-doc))
+A [Brackets](http://brackets.io) extension which allows you to quickly navigate to classes and methods in any PHP file. 
+
+When in a class definition file, it can find methods in the current file or in any parent classes. It can also find any class being instantiated in the current file, its methods and any parent classes.
 
 ## Installation
 
 * Select **File > Extension Manager...** (or click the "brick" icon in the toolbar)
 * Click **Install from URL...**
 * Enter the url of this repo
-  * https://github.com/DannyMoerkerke/brackets-php-doc
+  * https://github.com/DannyMoerkerke/brackets-codeintel
 * Click **Install**
 
 ## How to use
 
-Place the cursor inside the keyword you want to search for (or select it) and press "Alt-P" or select **Navigate > Lookup on PHP.net**.
-The corresponding documentation page on [php.net](http://php.net/) will now open in your default browser.
+Place the cursor inside the keyword you want to search for (or select it) and press "Ctrl-Alt-Space" for Linux and Windows, "Cmd-Alt-Space" for Mac or select **Navigate > CodeIntel**.
+The keyword should be the name of a class or method or the variable that holds a class instance
 
-## Credits
+## Limitations
 
-Thanks to [Joan Leon](https://github.com/nucliweb) for the inspiration and of course [php.net](http://php.net/) for providing one of the best online manuals available.
+For Brackets CodeIntel to find class definition files, the name of the class should appear in the filename (which is good practice anyway...)
+It can find a class by a variable that holds an instance of this class, but only if that class was instantiated with "new" in the current file. It cannot find a class by in instance variable that was returned from a method, like for example a factory.
 
 ## Version History
 

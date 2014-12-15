@@ -40,8 +40,8 @@ define(function (require, exports, module) {
     
     // mapping of extensions to method call operators
     var operators = {
-        php: '->',
-        js: '.'
+        php: ['->', '::'],
+        js: ['.']
     };
     
     // boolean which indicates if file was found, used to reject promise
@@ -74,21 +74,29 @@ define(function (require, exports, module) {
             sel = editor.getSelection();
         }
         var ext = FileUtils.getFileExtension(editor.document.file.fullPath);
-        var op = operators[ext];
-        var operator = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - op.length}, {line: sel.start.line, ch: sel.start.ch});
+        var ops = operators[ext];
+        var len = ops.length;
         
-        if(operator === op) {
-            // split line by method so the preceding part contains the object it was called on
-            // strip the operator and then if the result of the method call was assigned to a variable
-            // ($foo = $obj->method()) split that part by '=', get the last item of the result array and trim it
-            // otherwise split by ' ' since any other command or keyword that precedes the object (e.g. return $foo) must be followed by a space 
-            // (an assignment with '=' might not have a space in it e.g. $foo=1 vs $foo = 1)
-            var parts = editor.document.getLine(sel.start.line).split(selection);
-            var o = parts[0].substr(0, parts[0].length - operator.length);
-            
-            var obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.split(' ').pop().trim();
-            return {text: selection, operator: operator, object: obj};
+        for(var i=0;i<len;i++) {
+            var op = ops[i];
+            var operator = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - op.length}, {line: sel.start.line, ch: sel.start.ch});
+            if(operator === op) {
+                // split line by method so the preceding part contains the object it was called on
+                // strip the operator and then if the result of the method call was assigned to a variable
+                // ($foo = $obj->method()) split that part by '=', get the last item of the result array and trim it
+                // otherwise split by ' ' since any other command or keyword that precedes the object (e.g. return $foo) must be followed by a space 
+                // (an assignment with '=' might not have a space in it e.g. $foo=1 vs $foo = 1)
+                var parts = editor.document.getLine(sel.start.line).split(selection);
+                var o = parts[0].substr(0, parts[0].length - operator.length);
+
+                var obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.split(' ').pop().trim();
+                return {text: selection, object: obj};
+            }
         }
+        
+        var ch = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - 1}, {line: sel.start.line, ch: sel.start.ch});
+        if(ch === '$') return {object: '$' + selection};
+        
         return {text: selection};
     }
     
@@ -322,9 +330,9 @@ define(function (require, exports, module) {
         var curDoc = editor.document;
         var sel = getSelection(editor);
         var ext = FileUtils.getFileExtension(curDoc.file.fullPath);
+        var obj; 
         
-        if('operator' in sel && sel.operator === operators[ext]) {
-            
+        if('object' in sel) {
             // method called on this-pointer so search in file and inheritance tree
             if(isThisPointer(sel.object)) {
                 findMethod(sel.text, curDoc) 
@@ -333,22 +341,27 @@ define(function (require, exports, module) {
             }
             // method called on another object, see if this object is instantiated with "new" in the current file and if so, try to find the file in which this class 
             else {
-                var obj = getMethodCallTarget(editor.document, sel.object);
-                
-                findFile(obj, curDoc)
-                .then(getDocumentForFile)
-                .then(function(doc) {
-                    return findMethod(sel.text, doc);
-                })
-                .done(selectLineInDoc)
-                .fail(handleError);
+                obj = getMethodCallTarget(editor.document, sel.object);
+                // sel.text holds the method name so find the file and then the method
+                if('text' in sel) {
+                    
+                    return findFile(obj, curDoc)
+                    .then(getDocumentForFile)
+                    .then(function(doc) {
+                        return findMethod(sel.text, doc);
+                    })
+                    .done(selectLineInDoc)
+                    .fail(handleError);
+                }
             }
         }
         else {
-            findFile(sel.text, curDoc)
-            .done(openFile)
-            .fail(handleError);
+            obj = sel.text;
         }
+        
+        findFile(obj, curDoc)
+        .done(openFile)
+        .fail(handleError);
     }
     
     /**
