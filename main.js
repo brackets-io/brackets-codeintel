@@ -66,7 +66,8 @@ define(function (require, exports, module) {
             return null;
         }
 
-        var selection = editor.getSelectedText();
+        var o,
+            selection = editor.getSelectedText();
 
         if (!selection) {
             editor.selectWordAt(sel.start);
@@ -79,23 +80,31 @@ define(function (require, exports, module) {
         
         for(var i=0;i<len;i++) {
             var op = ops[i];
-            var operator = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - op.length}, {line: sel.start.line, ch: sel.start.ch});
-            if(operator === op) {
+            var before = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - op.length}, {line: sel.start.line, ch: sel.start.ch});
+            var after = editor.document.getRange({line: sel.start.line, ch: sel.end.ch}, {line: sel.start.line, ch: sel.end.ch + op.length});
+            console.log(before, after, op);
+            console.log(editor.document.getLine(sel.start.line).substring(0, sel.end.ch));
+            if(before === op) {
+                console.log('before');
                 // split line by method so the preceding part contains the object it was called on
                 // strip the operator and then if the result of the method call was assigned to a variable
                 // ($foo = $obj->method()) split that part by '=', get the last item of the result array and trim it
                 // otherwise split by ' ' since any other command or keyword that precedes the object (e.g. return $foo) must be followed by a space 
                 // (an assignment with '=' might not have a space in it e.g. $foo=1 vs $foo = 1)
                 var parts = editor.document.getLine(sel.start.line).split(selection);
-                var o = parts[0].substr(0, parts[0].length - operator.length);
-
+                o = parts[0].substr(0, parts[0].length - op.length);
                 var obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.split(' ').pop().trim();
+                console.log(obj);
                 return {text: selection, object: obj};
+
+            }
+            else if(after === op) {
+                console.log('after');
+                o = editor.document.getLine(sel.start.line).substring(0, sel.end.ch);
+                var obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.split(' ').pop().trim();
+                return {object: obj};
             }
         }
-        
-        var ch = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - 1}, {line: sel.start.line, ch: sel.start.ch});
-        if(ch === '$') return {object: '$' + selection};
         
         return {text: selection};
     }
@@ -113,7 +122,7 @@ define(function (require, exports, module) {
         var deferred = def || new $.Deferred();
         var lines = StringUtils.getLines(doc.getText());
         var matchedLine;
-        
+        console.log('find',name,'in',doc.file.fullPath);
         lines.map(function(line, index) {
            if(line.match('function ' + name)) {
                matchedLine = index;
@@ -144,7 +153,7 @@ define(function (require, exports, module) {
         
         var deferred = new $.Deferred();
         var parentName = getParentName(doc);
-        
+        console.log('parent', parentName);
         if(parentName === null) {
             return deferred.resolve(null);
         }
@@ -185,7 +194,7 @@ define(function (require, exports, module) {
         var len = lines.length;
         for(var i=0;i<len;i++) {
             if(lines[i].match(targetString)) {
-                parentName = lines[i].split(targetString).pop().trim();
+                parentName = lines[i].split(targetString).pop().trim().split(' ').shift().trim();
                 break;
             }
         }
@@ -287,12 +296,22 @@ define(function (require, exports, module) {
     
     /**
      * Determine if string is a this-pointer
-     
+     * 
      * @param   String pointer 
      * @returns Boolean
      */
     function isThisPointer(pointer) {
-        return pointer === '$this';
+        return pointer.indexOf('this') !== -1 || pointer.indexOf('self') !== -1 ;
+    }
+    
+    /**
+     * Determine if string is a parent-pointer
+     * 
+     * @param   String pointer 
+     * @returns Boolean
+     */
+    function isParentPointer(pointer) {
+        return pointer.indexOf('parent') !== -1;
     }
     
     /**
@@ -308,6 +327,9 @@ define(function (require, exports, module) {
         var lines = StringUtils.getLines(doc.getText());
         var len = lines.length;
         var obj;
+        
+        if(isParentPointer(object)) return getParentName(doc);
+        
         for(var i=0;i<len;i++) {
             // escape string for regex pattern, see http://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
             var o = object.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
@@ -318,7 +340,7 @@ define(function (require, exports, module) {
                 break;
             }
         }
-        return obj;
+        return obj || object; 
     }
     
     /**
@@ -342,6 +364,7 @@ define(function (require, exports, module) {
             // method called on another object, see if this object is instantiated with "new" in the current file and if so, try to find the file in which this class 
             else {
                 obj = getMethodCallTarget(editor.document, sel.object);
+                console.log(obj);
                 // sel.text holds the method name so find the file and then the method
                 if('text' in sel) {
                     
