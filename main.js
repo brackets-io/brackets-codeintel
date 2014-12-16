@@ -67,6 +67,7 @@ define(function (require, exports, module) {
         }
 
         var o,
+            obj,
             selection = editor.getSelectedText();
 
         if (!selection) {
@@ -80,12 +81,14 @@ define(function (require, exports, module) {
         
         for(var i=0;i<len;i++) {
             var op = ops[i];
+            
+            // get parts before and after the selection with the length of the operator
+            // this is to determine if the operator comes before or after the selection
             var before = editor.document.getRange({line: sel.start.line, ch: sel.start.ch - op.length}, {line: sel.start.line, ch: sel.start.ch});
             var after = editor.document.getRange({line: sel.start.line, ch: sel.end.ch}, {line: sel.start.line, ch: sel.end.ch + op.length});
-            console.log(before, after, op);
-            console.log(editor.document.getLine(sel.start.line).substring(0, sel.end.ch));
+            
+            // operator comes before the selection, selection is a methodname
             if(before === op) {
-                console.log('before');
                 // split line by method so the preceding part contains the object it was called on
                 // strip the operator and then if the result of the method call was assigned to a variable
                 // ($foo = $obj->method()) split that part by '=', get the last item of the result array and trim it
@@ -93,15 +96,18 @@ define(function (require, exports, module) {
                 // (an assignment with '=' might not have a space in it e.g. $foo=1 vs $foo = 1)
                 var parts = editor.document.getLine(sel.start.line).split(selection);
                 o = parts[0].substr(0, parts[0].length - op.length);
-                var obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.split(' ').pop().trim();
-                console.log(obj);
+                obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.split(' ').pop().trim();
+                
                 return {text: selection, object: obj};
 
             }
+            // operator comes after the selection, selection is an object
             else if(after === op) {
-                console.log('after');
+                // get part of the line from the beginning untill the end of the selection, split that part by '=', get the last item of the result array and trim it
+                // otherwise split by ' ' since any other command or keyword that precedes the object (e.g. return $foo) must be followed by a space 
+                // (an assignment with '=' might not have a space in it e.g. $foo=1 vs $foo = 1)
                 o = editor.document.getLine(sel.start.line).substring(0, sel.end.ch);
-                var obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.split(' ').pop().trim();
+                obj = o.indexOf('=') !== -1 ? o.split('=').pop().trim() : o.split(' ').pop().trim();
                 return {object: obj};
             }
         }
@@ -122,7 +128,7 @@ define(function (require, exports, module) {
         var deferred = def || new $.Deferred();
         var lines = StringUtils.getLines(doc.getText());
         var matchedLine;
-        console.log('find',name,'in',doc.file.fullPath);
+
         lines.map(function(line, index) {
            if(line.match('function ' + name)) {
                matchedLine = index;
@@ -153,7 +159,7 @@ define(function (require, exports, module) {
         
         var deferred = new $.Deferred();
         var parentName = getParentName(doc);
-        console.log('parent', parentName);
+        
         if(parentName === null) {
             return deferred.resolve(null);
         }
@@ -364,7 +370,7 @@ define(function (require, exports, module) {
             // method called on another object, see if this object is instantiated with "new" in the current file and if so, try to find the file in which this class 
             else {
                 obj = getMethodCallTarget(editor.document, sel.object);
-                console.log(obj);
+                
                 // sel.text holds the method name so find the file and then the method
                 if('text' in sel) {
                     
