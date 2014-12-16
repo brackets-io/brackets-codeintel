@@ -357,7 +357,6 @@ define(function (require, exports, module) {
         var editor = EditorManager.getActiveEditor();
         var curDoc = editor.document;
         var sel = getSelection(editor);
-        var ext = FileUtils.getFileExtension(curDoc.file.fullPath);
         var obj; 
         
         if('object' in sel) {
