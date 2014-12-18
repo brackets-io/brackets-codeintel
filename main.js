@@ -173,7 +173,7 @@ define(function (require, exports, module) {
             deferred.resolve(result[0]); 
         }
         else {
-            findFile(parentName, doc)
+            findFile(parentName)
             .then(getDocumentForFile)
             .done(function(parentDoc) {
                 deferred.resolve(parentDoc); 
@@ -210,18 +210,14 @@ define(function (require, exports, module) {
      * Gets the file with name equal to name parameter and the extension of the file opened in the current document
      * 
      * @param   String     name filename without extension
-     * @param   Document   doc  current document
      * @returns Promise
      */
-    function findFile(name, doc) {
+    function findFile(name) {
         found = false;
         var deferred = new $.Deferred();
-        var curFile = doc.file;
-        var ext = curFile.fullPath.split('.').pop();
-        var targetFile = name + '.' + ext;
         var root = ProjectManager.getProjectRoot();
         
-        searchDirectory(root, targetFile, deferred);
+        searchDirectory(root, name, deferred);
         
         // if the file was not found reject the promise so it does not hang forever
         if(!found) {
@@ -231,21 +227,21 @@ define(function (require, exports, module) {
     }
     
     /**
-     * Recursively search directory specified by directory parameter for filename specified by targetFile parameter
+     * Recursively search directory specified by directory parameter for filename specified by name parameter
      * 
      * @param Directory directory  directory to start from searching
-     * @param String    targetFile name of file to search for
+     * @param String    name       name of class to search for
      * @param Deferred  deferred   deferred object to resolve with found File object
      */
-    function searchDirectory(directory, targetFile, deferred) {
+    function searchDirectory(directory, name, deferred) {
         
         directory.getContents(function(a,items) {
             
             items.forEach(function(item) {
                 if(typeof item.getContents === 'function') {
-                    searchDirectory(item, targetFile, deferred); 
+                    searchDirectory(item, name, deferred); 
                 }
-                if(FileUtils.compareFilenames(FileUtils.getBaseName(item.fullPath), targetFile) === 0) {
+                if(FileUtils.getBaseName(item.fullPath).indexOf(name) !== -1) {
                     found = true;
                     deferred.resolve(item);
                 }
@@ -372,7 +368,7 @@ define(function (require, exports, module) {
                 // sel.text holds the method name so find the file and then the method
                 if('text' in sel) {
                     
-                    return findFile(obj, curDoc)
+                    return findFile(obj)
                     .then(getDocumentForFile)
                     .then(function(doc) {
                         return findMethod(sel.text, doc);
@@ -386,7 +382,7 @@ define(function (require, exports, module) {
             obj = sel.text;
         }
         
-        findFile(obj, curDoc)
+        findFile(obj)
         .done(openFile)
         .fail(handleError);
     }
