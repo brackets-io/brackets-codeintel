@@ -40,15 +40,14 @@ define(function (require, exports, module) {
     
     // mapping of extensions to method call operators
     var operators = {
-        php: ['->', '::'],
-        js: ['.']
+        php: ['->', '::']
     };
     
     // boolean which indicates if file was found, used to reject promise
     var found;
 
     // Constants
-    var NAVIGATE_CODEINTEL  = "Codeintel",
+    var NAVIGATE_CODEINTEL  = "CodeIntel",
         CMD_CODEINTEL    = "dannymoerkerke.codeIntel";
     
     /**
@@ -408,7 +407,7 @@ define(function (require, exports, module) {
         handleCodeIntel
     );
     KeyBindingManager.addBinding(CMD_CODEINTEL, "Ctrl-Alt-Space", "linux");
-    KeyBindingManager.addBinding(CMD_CODEINTEL, "Cmd-Shift-Space", "mac");
+    KeyBindingManager.addBinding(CMD_CODEINTEL, "Ctrl-Alt-Space", "mac");
     KeyBindingManager.addBinding(CMD_CODEINTEL, "Ctrl-Alt-Space", "win");
     
     // Create a menu item bound to the command
