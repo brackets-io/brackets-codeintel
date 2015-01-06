@@ -1,0 +1,12 @@
+{
+    "name": "dannymoerkerke.brackets-php-doc",
+    "title": "PHP.net Doc",
+    "description": "Brackets Extension to consult the php.net documentation",
+    "homepage": "https://github.com/DannyMoerkerke/brackets-php-doc",
+    "version": "0.1.0",
+    "author": "Danny Moerkerke <danny@dannymoerkerke.nl> (http://github.com/DannyMoerkerke)",
+    "license": "MIT",
+    "engines": {
+        "brackets": ">=0.40.0"
+    }
+}
