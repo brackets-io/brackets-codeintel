@@ -74,7 +74,7 @@ define(function (require, exports, module) {
             selection = editor.getSelectedText();
             sel = editor.getSelection();
         }
-        var ext = FileUtils.getFileExtension(editor.document.file.fullPath);
+        var ext = getExtensionForDocument(editor.document);
         var ops = operators[ext];
         var len = ops.length;
         
@@ -110,7 +110,6 @@ define(function (require, exports, module) {
                 return {object: obj};
             }
         }
-        
         return {text: selection};
     }
     
@@ -127,7 +126,7 @@ define(function (require, exports, module) {
         var deferred = def || new $.Deferred();
         var lines = StringUtils.getLines(doc.getText());
         var matchedLine;
-
+        
         lines.map(function(line, index) {
            if(line.match('function ' + name)) {
                matchedLine = index;
@@ -158,15 +157,16 @@ define(function (require, exports, module) {
         
         var deferred = new $.Deferred();
         var parentName = getParentName(doc);
-        
+
         if(parentName === null) {
-            return deferred.resolve(null);
+            return deferred.reject('not found');
         }
-        
+
         // if the document is already open return that
         var result = DocumentManager.getAllOpenDocuments()
         .filter(function(document) {
-            return document.file.fullPath.indexOf(parentName) !== -1;
+            var ext = getExtensionForDocument(doc);
+            return document.file.fullPath.split('/').pop() === parentName + '.' + ext;
         });
         
         if(result.length) {
@@ -298,6 +298,15 @@ define(function (require, exports, module) {
     function getDocumentForFile(file) {
         return DocumentManager.getDocumentForPath(file.fullPath);
     }
+    /**
+     * Returns extension for document
+     *
+     * @param   Document   doc      
+     * @returns String   
+     */
+    function getExtensionForDocument(doc) {
+        return FileUtils.getFileExtension(doc.file.fullPath);
+    }
     
     /**
      * Determine if string is a this-pointer
@@ -333,7 +342,9 @@ define(function (require, exports, module) {
         var len = lines.length;
         var obj;
         
-        if(isParentPointer(object)) return getParentName(doc);
+        if(isParentPointer(object)) {
+            return getParentName(doc);
+        }
         
         for(var i=0;i<len;i++) {
             // escape string for regex pattern, see http://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
@@ -371,7 +382,6 @@ define(function (require, exports, module) {
                 
                 // sel.text holds the method name so find the file and then the method
                 if('text' in sel) {
-                    
                     return findFile(obj, curDoc)
                     .then(getDocumentForFile)
                     .then(function(doc) {
