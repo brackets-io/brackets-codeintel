@@ -20,7 +20,6 @@ The keyword should be the name of a class or method or the variable that holds a
 ## Limitations
 For Brackets CodeIntel to find class definition files, the name of the class must match the filename ([PSR-4](http://www.php-fig.org/psr/psr-4/)).
 
->>>>>>> 23db37946ab042b2f064e204a72c5304a1a0a5ac
 It can find a class by a variable that holds an instance of this class, but only if that class was instantiated with "new" in the current file. If the same variable name is used for different instances this might not work.
 
 For example:
