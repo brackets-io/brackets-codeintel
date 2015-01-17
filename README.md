@@ -1,6 +1,10 @@
 ## Brackets codeintel
 
+<<<<<<< HEAD
 A [Brackets](http://brackets.io) extension which allows you to quickly navigate to classes and methods in any PHP file. 
+=======
+A [Brackets](http://brackets.io) extension which enables you to quickly navigate to classes and methods in any PHP file. 
+>>>>>>> 23db37946ab042b2f064e204a72c5304a1a0a5ac
 
 When in a class definition file, it can find methods in the current file or in any parent classes. It can also find any class being instantiated in the current file, its methods and any parent classes.
 
@@ -18,8 +22,9 @@ Place the cursor inside the keyword you want to search for (or select it) and pr
 The keyword should be the name of a class or method or the variable that holds a class instance.
 
 ## Limitations
+For Brackets CodeIntel to find class definition files, the name of the class must match the filename ([PSR-4](http://www.php-fig.org/psr/psr-4/)).
 
-For Brackets CodeIntel to find class definition files, the name of the class should appear in the filename (which is good practice anyway...)
+>>>>>>> 23db37946ab042b2f064e204a72c5304a1a0a5ac
 It can find a class by a variable that holds an instance of this class, but only if that class was instantiated with "new" in the current file. If the same variable name is used for different instances this might not work.
 
 For example:

@@ -74,6 +74,7 @@ define(function (require, exports, module) {
             selection = editor.getSelectedText();
             sel = editor.getSelection();
         }
+
         var ext = getExtensionForDocument(editor.document);
         var ops = operators[ext];
         var len = ops.length;
@@ -126,7 +127,7 @@ define(function (require, exports, module) {
         var deferred = def || new $.Deferred();
         var lines = StringUtils.getLines(doc.getText());
         var matchedLine;
-        
+
         lines.map(function(line, index) {
            if(line.match('function ' + name)) {
                matchedLine = index;
@@ -298,6 +299,7 @@ define(function (require, exports, module) {
     function getDocumentForFile(file) {
         return DocumentManager.getDocumentForPath(file.fullPath);
     }
+
     /**
      * Returns extension for document
      *
