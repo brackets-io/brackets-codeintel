@@ -1,10 +1,6 @@
 ## Brackets codeintel
 
-<<<<<<< HEAD
-A [Brackets](http://brackets.io) extension which allows you to quickly navigate to classes and methods in any PHP file. 
-=======
 A [Brackets](http://brackets.io) extension which enables you to quickly navigate to classes and methods in any PHP file. 
->>>>>>> 23db37946ab042b2f064e204a72c5304a1a0a5ac
 
 When in a class definition file, it can find methods in the current file or in any parent classes. It can also find any class being instantiated in the current file, its methods and any parent classes.
 
