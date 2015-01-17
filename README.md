@@ -41,3 +41,4 @@ Also, it cannot find a class by an instance variable that was returned from a me
 ## Version History
 
 - 12/18/2014 v0.1.0 - Initial release.
+- 01/17/2015 v0.1.1 - Bugfixes
