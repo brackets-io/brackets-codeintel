@@ -1,17 +1,9 @@
 {
-<<<<<<< HEAD
-    "name": "dannymoerkerke.brackets-php-doc",
-    "title": "PHP.net Doc",
-    "description": "Brackets Extension to consult the php.net documentation",
-    "homepage": "https://github.com/DannyMoerkerke/brackets-php-doc",
-    "version": "0.1.0",
-=======
     "name": "dannymoerkerke.brackets-codeintel",
     "title": "Brackets Codeintel",
-  "description": "Brackets Extension to navigate to classes and methods in any PHP file",
+    "description": "Brackets Extension to navigate to classes and methods in any PHP file",
     "homepage": "https://github.com/DannyMoerkerke/brackets-codeintel",
-    "version": "0.0.1",
->>>>>>> 23db37946ab042b2f064e204a72c5304a1a0a5ac
+    "version": "0.1.1",
     "author": "Danny Moerkerke <danny@dannymoerkerke.nl> (http://github.com/DannyMoerkerke)",
     "license": "MIT",
     "engines": {
